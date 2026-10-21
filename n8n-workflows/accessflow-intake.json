@@ -1,0 +1,123 @@
+{
+  "name": "AccessFlow - Intake and Approval Routing",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "accessflow-requests",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "1",
+      "name": "Receive Access Request",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-560, 80],
+      "webhookId": "accessflow-requests"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://api:8000/access-requests",
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify($json.body) }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "response": {"fullResponse": true}
+            }
+          }
+        }
+      },
+      "id": "2",
+      "name": "Submit to AccessFlow API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-320, 80],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1000,
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {"caseSensitive": true, "leftValue": "", "typeValidation": "strict"},
+          "conditions": [
+            {
+              "leftValue": "={{ $json.body.status }}",
+              "rightValue": "pending_approval",
+              "operator": {"type": "string", "operation": "equals"}
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "3",
+      "name": "Requires Human Approval",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [-60, 0]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.body }}",
+        "options": {"responseCode": 202}
+      },
+      "id": "4",
+      "name": "Return Pending Approval",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [220, -80]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.body }}",
+        "options": {}
+      },
+      "id": "5",
+      "name": "Return Completed Result",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [220, 100]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\"status\":\"failed\",\"message\":\"AccessFlow API is unavailable\"}",
+        "options": {"responseCode": 503}
+      },
+      "id": "6",
+      "name": "Return Safe Failure",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [-40, 220]
+    }
+  ],
+  "connections": {
+    "Receive Access Request": {"main": [[{"node": "Submit to AccessFlow API", "type": "main", "index": 0}]]},
+    "Submit to AccessFlow API": {
+      "main": [
+        [{"node": "Requires Human Approval", "type": "main", "index": 0}],
+        [{"node": "Return Safe Failure", "type": "main", "index": 0}]
+      ]
+    },
+    "Requires Human Approval": {
+      "main": [
+        [{"node": "Return Pending Approval", "type": "main", "index": 0}],
+        [{"node": "Return Completed Result", "type": "main", "index": 0}]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {"executionOrder": "v1"},
+  "versionId": "b1fd816d-2bd0-4f09-93e5-4f63031e56c0",
+  "meta": {"templateCredsSetupCompleted": true},
+  "tags": []
+}

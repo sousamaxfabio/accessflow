@@ -1,0 +1,22 @@
+# Local Python environment
+.venv/
+
+# Python-generated files
+__pycache__/
+*.py[cod]
+
+# Test and analysis output
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
+
+# Local configuration and secrets
+.env
+.tmp-pip/
+
+# Local database files
+*.db
+*.sqlite
+*.sqlite3

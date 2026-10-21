@@ -1,0 +1,64 @@
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: accessflow
+      POSTGRES_USER: accessflow
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-local-development-only}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U accessflow -d accessflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - accessflow_postgres:/var/lib/postgresql/data
+
+  api:
+    build: .
+    environment:
+      ACCESSFLOW_DATABASE_URL: postgresql+psycopg://accessflow:${POSTGRES_PASSWORD:-local-development-only}@db:5432/accessflow
+      ACCESSFLOW_APPROVAL_API_KEY: ${ACCESSFLOW_APPROVAL_API_KEY:-local-development-only}
+    depends_on:
+      db:
+        condition: service_healthy
+    command: >
+      sh -c "alembic upgrade head &&
+      uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  mcp:
+    build: .
+    environment:
+      ACCESSFLOW_DATABASE_URL: postgresql+psycopg://accessflow:${POSTGRES_PASSWORD:-local-development-only}@db:5432/accessflow
+      ACCESSFLOW_MCP_TRANSPORT: streamable-http
+    depends_on:
+      db:
+        condition: service_healthy
+    command: ["python", "mcp_server.py"]
+    ports:
+      - "8001:8000"
+    profiles: ["mcp"]
+
+  n8n:
+    image: n8nio/n8n:latest
+    environment:
+      N8N_HOST: localhost
+      N8N_PORT: 5678
+      N8N_PROTOCOL: http
+      WEBHOOK_URL: http://localhost:5680/
+      N8N_ENCRYPTION_KEY: ${N8N_ENCRYPTION_KEY:-local-development-only-change-me}
+      ACCESSFLOW_APPROVAL_KEY: ${ACCESSFLOW_APPROVAL_API_KEY:-local-development-only}
+    depends_on:
+      api:
+        condition: service_started
+    ports:
+      - "5680:5678"
+    volumes:
+      - accessflow_n8n:/home/node/.n8n
+    restart: unless-stopped
+
+volumes:
+  accessflow_postgres:
+  accessflow_n8n:

@@ -1,0 +1,75 @@
+{
+  "name": "AccessFlow - Approval Decision",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "accessflow-decisions",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "1",
+      "name": "Receive Approval Decision",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [-420, 0],
+      "webhookId": "accessflow-decisions"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://api:8000/access-requests/{{ $json.body.request_id }}/decision",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-AccessFlow-Approval-Key",
+              "value": "={{ $env.ACCESSFLOW_APPROVAL_KEY }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ decision: $json.body.decision, reviewer: $json.body.reviewer, comments: $json.body.comments }) }}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": true,
+              "response": {"fullResponse": true}
+            }
+          }
+        }
+      },
+      "id": "2",
+      "name": "Record Decision",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [-160, 0],
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 1000
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json.body }}",
+        "options": {}
+      },
+      "id": "3",
+      "name": "Return Decision Result",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [100, 0]
+    }
+  ],
+  "connections": {
+    "Receive Approval Decision": {"main": [[{"node": "Record Decision", "type": "main", "index": 0}]]},
+    "Record Decision": {"main": [[{"node": "Return Decision Result", "type": "main", "index": 0}]]}
+  },
+  "active": false,
+  "settings": {"executionOrder": "v1"},
+  "versionId": "1c220c6a-af10-4a52-bd55-d66082df339f",
+  "meta": {"templateCredsSetupCompleted": true},
+  "tags": []
+}

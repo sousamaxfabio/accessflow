@@ -212,4 +212,3 @@ adapters, API behaviour, and MCP query validation.
 All employees are fictional and all SaaS operations are local simulations. The
 repository contains no production credentials and performs no real account or
 permission changes.
-
