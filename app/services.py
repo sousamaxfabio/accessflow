@@ -69,9 +69,7 @@ def _execute(record: AccessRequestRecord) -> None:
         AccessAction(record.action),
         grants,
     )
-    record.execution_results = [
-        result.model_dump(mode="json") for result in results
-    ]
+    record.execution_results = [result.model_dump(mode="json") for result in results]
     record.status = AccessRequestStatus.COMPLETED.value
 
 
@@ -210,8 +208,7 @@ def list_pending_requests(session: Session) -> list[AccessRequestRecord]:
         session.scalars(
             select(AccessRequestRecord)
             .where(
-                AccessRequestRecord.status
-                == AccessRequestStatus.PENDING_APPROVAL.value
+                AccessRequestRecord.status == AccessRequestStatus.PENDING_APPROVAL.value
             )
             .order_by(AccessRequestRecord.created_at)
         )

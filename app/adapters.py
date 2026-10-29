@@ -49,8 +49,7 @@ class SimulatedSaaSAdapter:
 
 
 ADAPTERS: dict[ApplicationName, SaaSAdapter] = {
-    application: SimulatedSaaSAdapter(application)
-    for application in ApplicationName
+    application: SimulatedSaaSAdapter(application) for application in ApplicationName
 }
 
 

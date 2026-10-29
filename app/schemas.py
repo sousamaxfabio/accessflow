@@ -61,14 +61,10 @@ class AccessRequestCreate(BaseModel):
         }
 
         if self.action in role_required_actions and self.target_role is None:
-            raise ValueError(
-                "target_role is required for onboarding and role changes"
-            )
+            raise ValueError("target_role is required for onboarding and role changes")
 
         if self.action == AccessAction.OFFBOARD and self.target_role is not None:
-            raise ValueError(
-                "target_role must not be provided for offboarding"
-            )
+            raise ValueError("target_role must not be provided for offboarding")
 
         return self
 

@@ -9,14 +9,11 @@ from sqlalchemy.pool import StaticPool
 from app.database import Base, get_db
 from app.main import app
 
-
-APPROVAL_HEADERS = {
-    "X-AccessFlow-Approval-Key": "local-development-only"
-}
+APPROVAL_HEADERS = {"X-AccessFlow-Approval-Key": "local-development-only"}
 
 
 @pytest.fixture
-def client() -> Generator[TestClient, None, None]:
+def client() -> Generator[TestClient]:
     engine = create_engine(
         "sqlite://",
         connect_args={"check_same_thread": False},
@@ -29,7 +26,7 @@ def client() -> Generator[TestClient, None, None]:
     )
     Base.metadata.create_all(engine)
 
-    def override_get_db() -> Generator[Session, None, None]:
+    def override_get_db() -> Generator[Session]:
         with testing_session() as session:
             yield session
 
@@ -68,15 +65,10 @@ def test_non_sensitive_request_completes_automatically(client: TestClient):
     assert accepted["requires_approval"] is False
     assert accepted["duplicate"] is False
 
-    detail = client.get(
-        f"/access-requests/{accepted['request_id']}"
-    ).json()
+    detail = client.get(f"/access-requests/{accepted['request_id']}").json()
     assert len(detail["policy"]) == 3
     assert len(detail["execution_results"]) == 3
-    assert all(
-        result["status"] == "success"
-        for result in detail["execution_results"]
-    )
+    assert all(result["status"] == "success" for result in detail["execution_results"])
 
 
 def test_duplicate_event_returns_original_request(client: TestClient):
@@ -106,9 +98,7 @@ def test_sensitive_request_waits_for_approval_then_completes(
     assert accepted["requires_approval"] is True
 
     pending = client.get("/access-requests/pending").json()
-    assert [item["request_id"] for item in pending] == [
-        accepted["request_id"]
-    ]
+    assert [item["request_id"] for item in pending] == [accepted["request_id"]]
 
     decision = client.post(
         f"/access-requests/{accepted['request_id']}/decision",
@@ -126,9 +116,7 @@ def test_sensitive_request_waits_for_approval_then_completes(
     assert completed["approval_decision"] == "approve"
     assert len(completed["execution_results"]) == 4
 
-    audit = client.get(
-        f"/access-requests/{accepted['request_id']}/audit"
-    ).json()
+    audit = client.get(f"/access-requests/{accepted['request_id']}/audit").json()
     assert [event["event_type"] for event in audit] == [
         "request_submitted",
         "policy_evaluated",
@@ -201,15 +189,11 @@ def test_offboarding_revokes_all_simulated_services(client: TestClient):
     )
 
     response = client.post("/access-requests", json=payload)
-    detail = client.get(
-        f"/access-requests/{response.json()['request_id']}"
-    ).json()
+    detail = client.get(f"/access-requests/{response.json()['request_id']}").json()
 
     assert response.json()["status"] == "completed"
     assert len(detail["execution_results"]) == 4
-    assert {
-        result["operation"] for result in detail["execution_results"]
-    } == {"revoke"}
+    assert {result["operation"] for result in detail["execution_results"]} == {"revoke"}
 
 
 def test_unknown_role_is_rejected_before_policy_evaluation(client: TestClient):
@@ -232,8 +216,7 @@ def test_policy_endpoint_is_read_only_and_explains_access(client: TestClient):
     assert policy["role"] == "automation_engineer"
     assert policy["requires_approval"] is True
     assert any(
-        grant["application"] == "github"
-        and grant["permission"] == "write"
+        grant["application"] == "github" and grant["permission"] == "write"
         for grant in policy["grants"]
     )
 

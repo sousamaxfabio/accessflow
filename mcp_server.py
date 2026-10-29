@@ -10,7 +10,6 @@ from app.mcp_queries import (
     list_pending_approval_data,
 )
 
-
 mcp = MCPServer("AccessFlow Read-Only")
 
 
