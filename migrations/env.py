@@ -7,7 +7,6 @@ from app import models  # noqa: F401
 from app.config import get_settings
 from app.database import Base
 
-
 config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)

@@ -13,9 +13,7 @@ class Base(DeclarativeBase):
 def _create_engine():
     database_url = get_settings().database_url
     connect_args = (
-        {"check_same_thread": False}
-        if database_url.startswith("sqlite")
-        else {}
+        {"check_same_thread": False} if database_url.startswith("sqlite") else {}
     )
     return create_engine(
         database_url,
@@ -32,7 +30,7 @@ SessionLocal = sessionmaker(
 )
 
 
-def get_db() -> Generator[Session, None, None]:
+def get_db() -> Generator[Session]:
     with SessionLocal() as session:
         yield session
 

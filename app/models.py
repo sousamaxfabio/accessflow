@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import JSON, Boolean, DateTime, ForeignKey, Integer, String, Text
@@ -8,7 +8,7 @@ from app.database import Base
 
 
 def utc_now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class AccessRequestRecord(Base):
@@ -27,21 +27,11 @@ class AccessRequestRecord(Base):
     reason: Mapped[str] = mapped_column(Text)
     status: Mapped[str] = mapped_column(String(30), index=True)
     requires_approval: Mapped[bool] = mapped_column(Boolean, default=False)
-    policy_snapshot: Mapped[list[dict[str, Any]]] = mapped_column(
-        JSON, default=list
-    )
-    execution_results: Mapped[list[dict[str, Any]]] = mapped_column(
-        JSON, default=list
-    )
-    approval_decision: Mapped[str | None] = mapped_column(
-        String(20), nullable=True
-    )
-    approval_reviewer: Mapped[str | None] = mapped_column(
-        String(100), nullable=True
-    )
-    approval_comments: Mapped[str | None] = mapped_column(
-        Text, nullable=True
-    )
+    policy_snapshot: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list)
+    execution_results: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list)
+    approval_decision: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    approval_reviewer: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    approval_comments: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utc_now
     )
@@ -69,6 +59,4 @@ class AuditEventRecord(Base):
         DateTime(timezone=True), default=utc_now
     )
 
-    request: Mapped[AccessRequestRecord] = relationship(
-        back_populates="audit_events"
-    )
+    request: Mapped[AccessRequestRecord] = relationship(back_populates="audit_events")

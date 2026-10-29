@@ -1,13 +1,11 @@
-from app.policies import ApplicationName, ROLE_POLICIES
+from app.policies import ROLE_POLICIES, ApplicationName
 from app.schemas import EmployeeRole
 
 
 def test_support_engineer_policy_uses_least_privilege():
     policy = ROLE_POLICIES[EmployeeRole.SUPPORT_ENGINEER]
 
-    granted_applications = {
-        grant.application for grant in policy.grants
-    }
+    granted_applications = {grant.application for grant in policy.grants}
 
     assert granted_applications == {
         ApplicationName.GOOGLE_WORKSPACE,
@@ -22,9 +20,7 @@ def test_automation_engineer_policy_requires_approval():
     policy = ROLE_POLICIES[EmployeeRole.AUTOMATION_ENGINEER]
 
     github_grant = next(
-        grant
-        for grant in policy.grants
-        if grant.application == ApplicationName.GITHUB
+        grant for grant in policy.grants if grant.application == ApplicationName.GITHUB
     )
 
     assert github_grant.permission == "write"

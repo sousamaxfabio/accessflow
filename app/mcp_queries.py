@@ -16,17 +16,13 @@ def explain_role_access_data(role: str) -> dict:
         employee_role = EmployeeRole(role)
     except ValueError as error:
         allowed = ", ".join(item.value for item in EmployeeRole)
-        raise ValueError(
-            f"Unknown role '{role}'. Allowed roles: {allowed}"
-        ) from error
+        raise ValueError(f"Unknown role '{role}'. Allowed roles: {allowed}") from error
     return get_role_policy(employee_role).model_dump(mode="json")
 
 
 def get_access_request_data(session: Session, request_id: str) -> dict:
     parsed_id = UUID(request_id)
-    return to_detail(
-        get_access_request(session, parsed_id)
-    ).model_dump(mode="json")
+    return to_detail(get_access_request(session, parsed_id)).model_dump(mode="json")
 
 
 def list_pending_approval_data(

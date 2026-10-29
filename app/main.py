@@ -1,5 +1,5 @@
-from contextlib import asynccontextmanager
 import secrets
+from contextlib import asynccontextmanager
 from typing import Annotated
 from uuid import UUID
 
@@ -17,7 +17,6 @@ from app.schemas import AccessRequestCreate, ApprovalDecisionCreate, EmployeeRol
 from app.services import (
     InvalidStateTransitionError,
     RequestNotFoundError,
-    create_access_request as create_access_request_service,
     decide_access_request,
     get_access_request,
     list_audit_events,
@@ -25,6 +24,9 @@ from app.services import (
     to_accepted,
     to_audit_view,
     to_detail,
+)
+from app.services import (
+    create_access_request as create_access_request_service,
 )
 
 
@@ -83,7 +85,7 @@ def health() -> dict[str, str]:
 def create_access_request(
     request: AccessRequestCreate,
     response: Response,
-    session: Session = Depends(get_db),
+    session: Annotated[Session, Depends(get_db)],
 ) -> AccessRequestAccepted:
     record, duplicate = create_access_request_service(session, request)
     if duplicate:
@@ -96,7 +98,7 @@ def create_access_request(
     response_model=list[AccessRequestDetail],
 )
 def read_pending_requests(
-    session: Session = Depends(get_db),
+    session: Annotated[Session, Depends(get_db)],
 ) -> list[AccessRequestDetail]:
     return [to_detail(record) for record in list_pending_requests(session)]
 
@@ -107,7 +109,7 @@ def read_pending_requests(
 )
 def read_access_request(
     request_id: UUID,
-    session: Session = Depends(get_db),
+    session: Annotated[Session, Depends(get_db)],
 ) -> AccessRequestDetail:
     try:
         return to_detail(get_access_request(session, request_id))
@@ -122,8 +124,8 @@ def read_access_request(
 def submit_approval_decision(
     request_id: UUID,
     decision: ApprovalDecisionCreate,
-    _: None = Depends(verify_approval_key),
-    session: Session = Depends(get_db),
+    _: Annotated[None, Depends(verify_approval_key)],
+    session: Annotated[Session, Depends(get_db)],
 ) -> AccessRequestDetail:
     try:
         return to_detail(decide_access_request(session, request_id, decision))
@@ -139,12 +141,11 @@ def submit_approval_decision(
 )
 def read_audit_history(
     request_id: UUID,
-    session: Session = Depends(get_db),
+    session: Annotated[Session, Depends(get_db)],
 ) -> list[AuditEventView]:
     try:
         return [
-            to_audit_view(event)
-            for event in list_audit_events(session, request_id)
+            to_audit_view(event) for event in list_audit_events(session, request_id)
         ]
     except RequestNotFoundError as error:
         raise HTTPException(status_code=404, detail=str(error)) from error
