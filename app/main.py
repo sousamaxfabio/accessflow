@@ -8,8 +8,10 @@ from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.database import get_db, init_database
+from app.logging_config import configure_logging
 from app.policies import RolePolicy
 from app.policy_engine import get_role_policy
+from app.request_logging import RequestLoggingMiddleware
 from app.responses import AccessRequestAccepted, AccessRequestDetail, AuditEventView
 from app.schemas import AccessRequestCreate, ApprovalDecisionCreate, EmployeeRole
 from app.services import (
@@ -30,6 +32,9 @@ from app.services import (
 async def lifespan(_: FastAPI):
     init_database()
     yield
+
+
+logger = configure_logging(get_settings().log_level)
 
 
 def verify_approval_key(
@@ -57,6 +62,11 @@ app = FastAPI(
         "idempotency and audit history."
     ),
     lifespan=lifespan,
+)
+
+app.add_middleware(
+    RequestLoggingMiddleware,
+    logger=logger,
 )
 
 
