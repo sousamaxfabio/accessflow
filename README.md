@@ -2,7 +2,7 @@
 
 AccessFlow is a policy-driven SaaS access orchestrator for employee onboarding,
 role changes, and offboarding. It combines FastAPI, Pydantic, PostgreSQL,
-SQLAlchemy, Alembic, n8n, Docker, and a read-only MCP server.
+SQLAlchemy, Alembic, HTTPX, n8n, Docker, and a read-only MCP server.
 
 The project demonstrates the work commonly found across IT operations,
 automation, identity and access management, backend integration, and support
@@ -23,6 +23,8 @@ AccessFlow replaces that informal process with a controlled pipeline:
 5. Simulate changes through isolated SaaS adapters.
 6. Persist every request, decision, result, and audit event.
 7. Expose selected read-only information through MCP.
+8. Query GitHub organization membership through a resilient read-only API
+   integration.
 
 ## Architecture
 
@@ -37,6 +39,7 @@ flowchart LR
     Approval -->|approved| Adapters
     Approval -->|rejected| Audit
     Adapters --> PostgreSQL
+    FastAPI -->|read-only| GitHub[GitHub REST API]
     PostgreSQL --> MCP[Read-only MCP]
 ```
 
@@ -57,7 +60,12 @@ the state machine.
 - Alembic manages the database schema.
 - n8n workflow exports provide intake, retry, fallback, and decision routing.
 - MCP tools are intentionally read-only.
-- GitHub Actions compiles the code, applies the migration, and runs tests.
+- The async GitHub directory client supports optional bearer authentication,
+  pagination, timeouts, retries, rate-limit handling, and validated responses.
+- Structured JSON logs include request correlation IDs and durations.
+- Ruff enforces linting and formatting locally and in GitHub Actions.
+- GitHub Actions checks code quality, compiles the code, applies the migration,
+  and runs tests.
 
 ## Role examples
 
@@ -75,10 +83,11 @@ The complete matrix and reasoning are in
 ## Quick start: local mode
 
 ```powershell
-py -m venv .venv
+py -V:3.13 -m venv .venv
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 .\.venv\Scripts\Activate.ps1
-python -m pip install -r requirements.txt
+python -m pip install -r requirements-dev.txt
+$env:ACCESSFLOW_DATABASE_URL = "sqlite:///./accessflow.db"
 python -m alembic upgrade head
 python -m uvicorn app.main:app --reload
 ```
@@ -133,6 +142,20 @@ POST /access-requests/{request_id}/decision
 The request must include the `X-AccessFlow-Approval-Key` header. Configure its
 value through `ACCESSFLOW_APPROVAL_API_KEY`; never commit the real value.
 
+## Example: GitHub directory integration
+
+List the members that GitHub makes visible for an organization:
+
+```text
+GET /integrations/github/organizations/octokit/members
+```
+
+The integration supports public unauthenticated requests. Configure the
+optional `ACCESSFLOW_GITHUB_TOKEN` value for authenticated requests; never
+commit a real token. See
+[`docs/github-integration.md`](docs/github-integration.md) for pagination,
+retry, timeout, rate-limit, and error-mapping behaviour.
+
 ## API surface
 
 | Method | Path | Purpose |
@@ -144,6 +167,7 @@ value through `ACCESSFLOW_APPROVAL_API_KEY`; never commit the real value.
 | POST | `/access-requests/{id}/decision` | Approve or reject sensitive access |
 | GET | `/access-requests/{id}/audit` | Read ordered audit history |
 | GET | `/policies/{role}` | Explain one RBAC policy |
+| GET | `/integrations/github/organizations/{organization}/members` | List validated GitHub organization members |
 
 ## MCP
 
@@ -193,12 +217,15 @@ container on Windows.
 ## Tests
 
 ```powershell
-python -m pytest -v
+python -m ruff check .
+python -m ruff format --check .
+python -m pytest -q
 ```
 
 The suite covers validation, trust boundaries, RBAC completeness, policy lookup,
 idempotency, approval state transitions, rejection, audit history, offboarding,
-adapters, API behaviour, and MCP query validation.
+adapters, API behaviour, MCP query validation, GitHub authentication headers,
+pagination, retries, timeouts, rate limits, and mocked external failures.
 
 ## Documentation
 
@@ -206,9 +233,11 @@ adapters, API behaviour, and MCP query validation.
 - [RBAC policy](docs/rbac-policy.md)
 - [Security decisions](docs/security.md)
 - [Operations runbook](docs/runbook.md)
+- [GitHub integration](docs/github-integration.md)
 
 ## Safety boundary
 
-All employees are fictional and all SaaS operations are local simulations. The
-repository contains no production credentials and performs no real account or
-permission changes.
+All employees are fictional and all access-changing SaaS operations are local
+simulations. The GitHub integration performs read-only directory requests and
+does not change accounts or permissions. The repository contains no production
+credentials.

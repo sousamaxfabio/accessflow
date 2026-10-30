@@ -8,6 +8,8 @@ from sqlalchemy.orm import Session
 
 from app.config import get_settings
 from app.database import get_db, init_database
+from app.github_dependencies import github_client_context
+from app.github_routes import router as github_router
 from app.logging_config import configure_logging
 from app.policies import RolePolicy
 from app.policy_engine import get_role_policy
@@ -31,9 +33,12 @@ from app.services import (
 
 
 @asynccontextmanager
-async def lifespan(_: FastAPI):
+async def lifespan(app: FastAPI):
     init_database()
-    yield
+
+    async with github_client_context(get_settings()) as github_client:
+        app.state.github_client = github_client
+        yield
 
 
 logger = configure_logging(get_settings().log_level)
@@ -58,7 +63,7 @@ def verify_approval_key(
 
 app = FastAPI(
     title="AccessFlow API",
-    version="1.0.0",
+    version="1.1.0",
     description=(
         "Human-approved, policy-driven SaaS access orchestration with "
         "idempotency and audit history."
@@ -70,6 +75,7 @@ app.add_middleware(
     RequestLoggingMiddleware,
     logger=logger,
 )
+app.include_router(github_router)
 
 
 @app.get("/health")
